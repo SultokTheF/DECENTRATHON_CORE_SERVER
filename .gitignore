@@ -44,6 +44,7 @@ media/section_images/*.gif
 media/section_images/*.svg
 media/section_images/*.webp
 media/section_images/*.webp
+media/*.pdf
 staticfiles/
 static/
 .env
