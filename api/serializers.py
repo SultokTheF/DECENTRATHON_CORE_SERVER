@@ -19,7 +19,7 @@ class SectionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Section
-        fields = ['id', 'name', 'category', 'image', 'center', 'description', 'qr_code', 'weekly_pattern', 'syllabus']
+        fields = ['id', 'name', 'category', 'image', 'center', 'description', 'qr_code', 'weekly_pattern']
 
     def create(self, validated_data):
         weekly_pattern = validated_data.pop('weekly_pattern')
@@ -46,7 +46,7 @@ class SectionSerializer(serializers.ModelSerializer):
 
         current_date = first_day_of_next_month
         while current_date <= last_day_of_next_month:
-            day_name = current_date.strftime('%A')  # Получаем день недели на английском
+            day_name = current_date.strftime('%A')  
             for pattern in weekly_pattern:
                 if day_mapping.get(pattern['day']) == day_name:
                     start_time = pattern['start_time']
@@ -65,7 +65,6 @@ class SectionSerializer(serializers.ModelSerializer):
         section = super().update(instance, validated_data)
 
         if weekly_pattern:
-            # Удаляем старое расписание и создаем новое
             section.schedules.all().delete()
             self._generate_schedules_for_next_month(section, weekly_pattern)
 
@@ -102,3 +101,21 @@ class FeedbackSerializer(serializers.ModelSerializer):
         model = Feedback
         fields = ['id', 'user', 'text', 'stars', 'center', 'created_at']
         read_only_fields = ['user', 'created_at']
+
+from rest_framework import serializers
+from .models import UserResults
+
+class UserResultsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserResults
+        fields = ['test_question', 'chosen_answer', 'is_correct', 'created_at']
+
+    def to_representation(self, instance):
+        return {
+            'question': instance.test_question.question,
+            'chosen_answer': instance.test_question.options[instance.chosen_answer],
+            'correct_answer': instance.test_question.options[instance.test_question.correct_answer],
+            'is_correct': instance.is_correct
+        }
+
+

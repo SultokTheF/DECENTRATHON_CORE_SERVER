@@ -73,11 +73,19 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_verified = models.BooleanField(default=False)  
     date_joined = models.DateTimeField(default=timezone.now)
     sms_code = models.CharField(max_length=6, null=True, blank=True) 
+    total_points = models.IntegerField(default=0)  # Total points earned by the user
 
     objects = CustomUserManager()
 
     USERNAME_FIELD = 'email'  
     REQUIRED_FIELDS = ['first_name', 'last_name']
+    
+    def add_points(self, points):
+        """
+        Add points to the user's total score.
+        """
+        self.total_points += points
+        self.save()
 
     def __str__(self):
         return self.email or self.phone_number

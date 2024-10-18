@@ -7,6 +7,8 @@ from django.core.files.base import ContentFile
 from user.models import CustomUser
 from datetime import timedelta, datetime
 import calendar
+from .utils import parse_pdf, generate_test_from_syllabus
+
 
 GOOGLE_API_KEY = 'AIzaSyBAVkETmTSFkRbC-Vix0DJ7HbjWYPQ8Xa8'
 
@@ -65,17 +67,20 @@ class Section(models.Model):
     image = models.ImageField(upload_to='section_images/', blank=True, null=True)
     center = models.ForeignKey('Center', related_name='sections', on_delete=models.CASCADE)
     description = models.TextField(null=True, blank=True)
-    syllabus = models.FileField(upload_to='syllabus_pdfs/', blank=True, null=True)  # New field for syllabus
+    # syllabus = models.ForeignKey('Syllabus', related_name='sections', on_delete=models.SET_NULL, null=True, blank=True)  # Ссылка на Syllabus
     qr_code = models.ImageField(upload_to='qrcodes/', blank=True, null=True)
     weekly_pattern = models.JSONField(default=list)
 
     def save(self, *args, **kwargs):
+        # Генерация QR-кода
         super().save(*args, **kwargs)
         if not self.qr_code:
             qr_data = {'section_id': self.id}
             qr_code_file = generate_qr_code(qr_data)
             self.qr_code.save(f'{self.name}_qr.png', qr_code_file, save=False)
             super().save(update_fields=['qr_code'])
+
+        # Генерация статичного расписания
         self.generate_static_schedule_for_next_month()
 
     def generate_static_schedule_for_next_month(self):
@@ -97,18 +102,93 @@ class Section(models.Model):
                     start_time = datetime.strptime(pattern['start_time'], '%H:%M').time()
                     end_time = datetime.strptime(pattern['end_time'], '%H:%M').time()
 
-                    # Создаем запись в расписании
                     Schedule.objects.create(
                         section=self,
                         date=current_date,
                         start_time=start_time,
                         end_time=end_time,
-                        capacity=20,  # Примерное значение, можно менять
+                        capacity=20,  
                     )
             current_date += timedelta(days=1)
 
     def __str__(self):
         return self.name
+
+    
+from django.db import models
+
+class Syllabus(models.Model):
+    title = models.CharField(max_length=255)
+    section = models.ForeignKey('Section', related_name='syllabuses', on_delete=models.CASCADE)  # Уникальный related_name для обратного доступа
+    content = models.TextField()  
+
+    def __str__(self):
+        return self.title
+
+    def generate_and_save_tests(self):
+        """
+        Генерация вопросов по содержимому силлабуса.
+        """
+        from .utils import generate_test_from_syllabus
+        test_content = generate_test_from_syllabus(self.content, 5)
+        print(f"Generated Test Content: {test_content}")  
+        self.save_generated_tests(test_content)
+
+    def save_generated_tests(self, test_content):
+        """
+        Сохранение сгенерированных тестов.
+        """
+        test_entries = test_content.strip().split("\n\n")
+        letter_to_index = {'A': 0, 'B': 1, 'C': 2, 'D': 3}
+
+        for entry in test_entries:
+            try:
+                if "Correct Answer:" in entry:
+                    parts = entry.split("Correct Answer:")
+                    question_and_choices = parts[0].strip()
+                    correct_answer_letter = parts[1].strip()
+
+                    question_lines = question_and_choices.split("\n")
+                    question = question_lines[0].strip()  # Вопрос
+                    options = [option.strip()[3:] for option in question_lines[1:5]]  # Варианты ответа
+
+                    # Преобразуем правильный ответ из буквы в индекс
+                    correct_answer_index = letter_to_index.get(correct_answer_letter, None)
+
+                    if correct_answer_index is not None:
+                        # Сохранение вопроса и правильного ответа
+                        test_question = TestQuestion.objects.create(
+                            syllabus=self,
+                            question=question,
+                            options=options,  # Варианты ответа
+                            correct_answer=correct_answer_index  # Номер правильного ответа
+                        )
+                        print(f"Saved Test Question: {test_question.question}, Correct Answer Index: {correct_answer_index}")
+                    else:
+                        print(f"Correct answer letter not found: {correct_answer_letter}")
+            except Exception as e:
+                print(f"Error processing entry: {entry} - {str(e)}")
+
+
+class TestQuestion(models.Model):
+    syllabus = models.ForeignKey(Syllabus, related_name='test_questions', on_delete=models.CASCADE)
+    question = models.TextField()
+    options = models.JSONField()  # Список из 4 вариантов ответа
+    correct_answer = models.IntegerField()  # Номер правильного ответа (0, 1, 2, 3)
+
+    def __str__(self):
+        return self.question
+
+class UserResults(models.Model):
+    test_question = models.ForeignKey(TestQuestion, related_name="user_results", on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, related_name='user_results', on_delete=models.CASCADE)
+    chosen_answer = models.IntegerField()  # Индекс выбранного ответа (0, 1, 2, 3)
+    is_correct = models.BooleanField()  # Логическое поле для хранения результата: правильный/неправильный ответ
+    points = models.IntegerField(default=0)  # Количество очков за вопрос
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"User: {self.user.email}, Question: {self.test_question.question}, Correct: {self.is_correct}, Points: {self.points}"
 
 
 class Subscription(models.Model):

@@ -4,12 +4,97 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from .models import Center, Section, Subscription, Schedule, Record, SectionCategory, Feedback
-from .serializers import CenterSerializer, SectionSerializer, SubscriptionSerializer, ScheduleSerializer, RecordSerializer, SectionCategorySerializer, FeedbackSerializer
+from .serializers import CenterSerializer, SectionSerializer, SubscriptionSerializer, ScheduleSerializer, RecordSerializer, SectionCategorySerializer, FeedbackSerializer, UserResultsSerializer
 from .pagination import StandardResultsSetPagination
 from django.utils import timezone
 from datetime import timedelta, datetime
 from rest_framework.exceptions import ValidationError
 from .tasks import notify_user_after_recording
+
+import json
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.core.files.storage import FileSystemStorage
+from .models import Syllabus, TestQuestion
+from .utils import parse_pdf, generate_test_from_syllabus
+
+from rest_framework.decorators import api_view
+from django.core.files.storage import FileSystemStorage
+from django.http import JsonResponse
+from .models import Syllabus
+from .utils import parse_pdf
+
+from rest_framework.decorators import api_view
+from django.core.files.storage import FileSystemStorage
+from django.http import JsonResponse
+from .models import Syllabus, TestQuestion
+from .utils import parse_pdf
+
+@api_view(['POST'])
+def create_syllabus_and_generate_tests(request):
+    if 'pdf' not in request.FILES or 'section_id' not in request.POST:
+        return JsonResponse({"error": "No PDF file or section_id provided"}, status=400)
+
+    try:
+        pdf_file = request.FILES['pdf']
+        section_id = request.POST['section_id']
+
+        # Проверка, существует ли секция
+        try:
+            section = Section.objects.get(id=section_id)
+        except Section.DoesNotExist:
+            return JsonResponse({"error": "Section not found"}, status=404)
+
+        # Сохраняем PDF и парсим его
+        syllabus_content = parse_pdf(pdf_file)
+
+        # Создание силлабуса
+        syllabus = Syllabus.objects.create(
+            title=pdf_file.name,
+            content=syllabus_content,
+            section=section  # Связь с секцией по её id
+        )
+
+        # Генерация тестов для силлабуса
+        syllabus.generate_and_save_tests()
+
+        return JsonResponse({"status": "success", "syllabus_id": syllabus.id})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+@api_view(['GET'])
+def get_syllabuses_and_tests(request, section_id=None):
+    try:
+        if section_id:
+            syllabuses = Syllabus.objects.filter(section__id=section_id)  # Фильтрация по секции
+        else:
+            syllabuses = Syllabus.objects.all()  # Все силлабусы
+
+        syllabus_data = []
+
+        for syllabus in syllabuses:
+            questions = TestQuestion.objects.filter(syllabus=syllabus)
+            question_data = [
+                {
+                    "question": question.question,
+                    "options": question.options,
+                    "correct_answer": question.correct_answer
+                }
+                for question in questions
+            ]
+            syllabus_data.append({
+                "id": syllabus.id,
+                "title": syllabus.title,
+                "content": syllabus.content,
+                "section": syllabus.section.name,  # Название секции
+                "questions": question_data
+            })
+
+        return JsonResponse({"syllabuses": syllabus_data}, status=200)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+
 
 
 class CenterViewSet(viewsets.ModelViewSet):
@@ -83,7 +168,6 @@ class SectionViewSet(viewsets.ModelViewSet):
             if not section.center.users.filter(id=self.request.user.id).exists():
                 raise ValidationError("У вас нет прав для редактирования этого раздела.")
         serializer.save()
-
 
 
 class SectionCategoryViewSet(viewsets.ModelViewSet):
@@ -425,3 +509,113 @@ def dashboard_notifications(request):
             'end_date': subscription.end_date,
         } for subscription in expired_subscriptions]
     })
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from .models import TestQuestion, UserResults
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth.decorators import login_required
+from rest_framework.response import Response
+from django.http import JsonResponse
+from .models import TestQuestion, UserResults
+from django.contrib.auth import get_user_model
+
+CustomUser = get_user_model()
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from .models import TestQuestion, UserResults
+from user.models import CustomUser
+
+@api_view(['POST'])
+def submit_test(request):
+    user = request.user
+    if user.is_anonymous:
+        return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    data = request.data
+    test_id = data.get('test_id')
+    
+    # Проверка на наличие test_id
+    if not test_id:
+        return Response({"error": "Test ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Получаем тестовые вопросы для конкретного силлабуса
+        syllabus = Syllabus.objects.get(id=test_id)
+        test_questions = TestQuestion.objects.filter(syllabus=syllabus)
+
+        total_points_earned = 0  # Переменная для подсчета общего количества очков
+        points_per_correct_answer = 10  # Количество очков за правильный ответ
+        results = []
+
+        # Обработка всех ответов, которые пользователь прислал
+        for answer in data['answers']:
+            question_id = answer['question_id']
+            chosen_answer = answer['chosen_answer']
+
+            # Получение вопроса по его ID и проверка, принадлежит ли он данному силлабусу
+            try:
+                question = test_questions.get(id=question_id)
+            except TestQuestion.DoesNotExist:
+                return Response({"error": f"Question with ID {question_id} not found in this test"}, status=status.HTTP_404_NOT_FOUND)
+
+            # Проверка правильного ответа
+            is_correct = question.correct_answer == chosen_answer
+
+            # Начисление очков за правильный ответ
+            points_earned = points_per_correct_answer if is_correct else 0
+            total_points_earned += points_earned
+
+            # Сохранение результата
+            result = UserResults.objects.create(
+                test_question=question,
+                user=user,
+                chosen_answer=chosen_answer,
+                is_correct=is_correct,
+                points=points_earned
+            )
+
+            # Добавление результата в итоговый список
+            results.append({
+                "question": question.question,
+                "chosen_answer": chosen_answer,
+                "correct_answer": question.correct_answer,
+                "is_correct": is_correct,
+                "points": points_earned,
+                "options": question.options
+            })
+
+        # Обновление общего количества очков пользователя
+        user.add_points(total_points_earned)
+
+        return Response({"results": results, "total_points_earned": total_points_earned, "user_total_points": user.total_points}, status=status.HTTP_200_OK)
+
+    except Syllabus.DoesNotExist:
+        return Response({"error": "Test not found"}, status=status.HTTP_404_NOT_FOUND)
+    except KeyError as e:
+        return Response({"error": f"Missing key: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+def get_user_results(request):
+    # Ensure the user is authenticated
+    if not request.user.is_authenticated:
+        return Response({"error": "Authentication required"}, status=401)
+
+    user = request.user
+    user_results = UserResults.objects.filter(user=user)
+
+    results = []
+    for result in user_results:
+        results.append({
+            "question": result.test_question.question,
+            "chosen_answer": result.chosen_answer,
+            "correct_answer": result.test_question.correct_answer,
+            "is_correct": result.is_correct,
+            "points": result.points
+        })
+
+    return Response({"results": results})

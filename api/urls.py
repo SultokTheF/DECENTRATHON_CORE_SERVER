@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import CenterViewSet, SectionViewSet, SubscriptionViewSet, ScheduleViewSet, RecordViewSet, SectionCategoryViewSet, FeedbackViewSet, dashboard_metrics, dashboard_notifications, recent_activities
+from .views import CenterViewSet, SectionViewSet, SubscriptionViewSet, ScheduleViewSet, RecordViewSet, SectionCategoryViewSet, FeedbackViewSet, dashboard_metrics, dashboard_notifications, recent_activities, create_syllabus_and_generate_tests, get_syllabuses_and_tests, submit_test, get_user_results 
+from .views import get_syllabuses_and_tests  # Импорт представления
 
 router = DefaultRouter()
 router.register(r'centers', CenterViewSet)
@@ -20,4 +21,11 @@ urlpatterns = [
     path('dashboard/notifications/', dashboard_notifications, name='dashboard-notifications'),
     path('subscriptions/unactivated/', SubscriptionViewSet.as_view({'get': 'unactivated_subscriptions'})),
     path('subscriptions/<int:pk>/activate/', SubscriptionViewSet.as_view({'post': 'activate_subscription'})),
+    path('generate/', create_syllabus_and_generate_tests, name='generate_tests'),
+    path('get_tests/', get_syllabuses_and_tests, name='get_tests'), 
+    path('get_tests/<int:section_id>/', get_syllabuses_and_tests, name='get_tests_by_section'),  
+    path('submit_test/', submit_test, name='submit_test'),
+    path('get_user_results/', get_user_results, name='get_user_results'),
 ]
+
+
