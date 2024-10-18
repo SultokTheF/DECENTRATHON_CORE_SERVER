@@ -17,10 +17,10 @@ def parse_pdf(file):
 # Генерация тестов с вариантами ответа
 def generate_test_from_syllabus(syllabus_content, num_questions):
     prompt = (
-        f"Create {num_questions} test questions with exactly 4 answer choices each based on the following syllabus:\n\n"
+        f"Create {num_questions} test questions in language based on the text with exactly 4 answer choices each based on the following syllabus:\n\n"
         f"{syllabus_content}\n\n"
         "Please provide the format strictly as follows:\n"
-        "Question: <question>\n"
+        "Вопрос: <question>\n"
         "A) <answer option 1>\n"
         "B) <answer option 2>\n"
         "C) <answer option 3>\n"

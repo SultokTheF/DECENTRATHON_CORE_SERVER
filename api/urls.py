@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import CenterViewSet, SectionViewSet, SubscriptionViewSet, ScheduleViewSet, RecordViewSet, SectionCategoryViewSet, FeedbackViewSet, dashboard_metrics, dashboard_notifications, recent_activities, create_syllabus_and_generate_tests, get_syllabuses_and_tests, submit_test, get_user_results 
-from .views import get_syllabuses_and_tests  # Импорт представления
+from .views import get_syllabuses_and_tests, get_test_by_id  # Импорт представления
 
 router = DefaultRouter()
 router.register(r'centers', CenterViewSet)
@@ -27,6 +27,7 @@ urlpatterns = [
     path('submit_test/', submit_test, name='submit_test'),
     path('get_user_results/', get_user_results, name='get_user_results'),
     path('schedules/<int:pk>/start/', ScheduleViewSet.as_view({'post': 'start'}), name='schedule-start'),
+    path('get_test/<int:test_id>/', get_test_by_id, name='get_test_by_id'),
 ]
 
 

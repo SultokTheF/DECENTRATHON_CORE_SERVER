@@ -61,6 +61,38 @@ def create_syllabus_and_generate_tests(request):
         return JsonResponse({"status": "success", "syllabus_id": syllabus.id})
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
+
+@api_view(['GET'])
+def get_test_by_id(request, test_id):
+    try:
+        syllabus = Syllabus.objects.get(id=test_id)
+        questions = TestQuestion.objects.filter(syllabus=syllabus)
+
+        question_data = [
+            {
+                "question_id": question.id,
+                "question": question.question,
+                "options": question.options,
+                "correct_answer": question.correct_answer
+            }
+            for question in questions
+        ]
+
+        syllabus_data = {
+            "test_id": syllabus.id,
+            "title": syllabus.title,
+            "content": syllabus.content,
+            "section": syllabus.section.name,
+            "questions": question_data
+        }
+
+        return JsonResponse({"syllabus": syllabus_data}, status=200)
+
+    except Syllabus.DoesNotExist:
+        return JsonResponse({"error": "Test not found"}, status=404)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
 @api_view(['GET'])
 def get_syllabuses_and_tests(request, section_id=None):
     try:
