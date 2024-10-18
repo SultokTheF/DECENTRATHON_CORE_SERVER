@@ -23,6 +23,7 @@ build/
 __pycache__/
 db.sqlite3
 db.sqlite3-journal
+media/syllabus_pdfs/*.pdf
 media/qrcodes/*.png
 media/center_images/*.png
 media/center_images/*.jpg

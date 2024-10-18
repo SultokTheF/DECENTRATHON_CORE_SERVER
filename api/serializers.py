@@ -15,7 +15,7 @@ class CenterSerializer(serializers.ModelSerializer):
 class SectionSerializer(serializers.ModelSerializer):
     center = serializers.PrimaryKeyRelatedField(queryset=Center.objects.all())
     qr_code = serializers.ImageField(read_only=True)
-    weekly_pattern = serializers.JSONField()
+    weekly_pattern = serializers.JSONField(required=False, default=list)
 
     class Meta:
         model = Section
