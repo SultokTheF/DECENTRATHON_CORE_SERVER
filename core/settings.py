@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     # apps
     'user.apps.UserConfig',
     'api.apps.ApiConfig',
+    'ai_assistance.apps.AiAssistanceConfig',
 
     # third-party
     'rest_framework',
