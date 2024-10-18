@@ -80,7 +80,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 class ScheduleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Schedule
-        fields = ['id', 'section', 'date', 'start_time', 'end_time', 'capacity', 'reserved', 'status']
+        fields = ['id', 'section', 'date', 'start_time', 'end_time', 'capacity', 'reserved', 'status', 'meeting_link']
 
 class RecordSerializer(serializers.ModelSerializer):
     schedule = ScheduleSerializer(read_only=True)

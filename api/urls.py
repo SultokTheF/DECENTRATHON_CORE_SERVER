@@ -26,6 +26,7 @@ urlpatterns = [
     path('get_tests/<int:section_id>/', get_syllabuses_and_tests, name='get_tests_by_section'),  
     path('submit_test/', submit_test, name='submit_test'),
     path('get_user_results/', get_user_results, name='get_user_results'),
+    path('schedules/<int:pk>/start/', ScheduleViewSet.as_view({'post': 'start'}), name='schedule-start'),
 ]
 
 

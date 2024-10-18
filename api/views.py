@@ -61,7 +61,6 @@ def create_syllabus_and_generate_tests(request):
         return JsonResponse({"status": "success", "syllabus_id": syllabus.id})
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
-
 @api_view(['GET'])
 def get_syllabuses_and_tests(request, section_id=None):
     try:
@@ -76,6 +75,7 @@ def get_syllabuses_and_tests(request, section_id=None):
             questions = TestQuestion.objects.filter(syllabus=syllabus)
             question_data = [
                 {
+                    "question_id": question.id,  # Include question_id
                     "question": question.question,
                     "options": question.options,
                     "correct_answer": question.correct_answer
@@ -83,7 +83,7 @@ def get_syllabuses_and_tests(request, section_id=None):
                 for question in questions
             ]
             syllabus_data.append({
-                "id": syllabus.id,
+                "test_id": syllabus.id,  # Include test_id (syllabus id)
                 "title": syllabus.title,
                 "content": syllabus.content,
                 "section": syllabus.section.name,  # Название секции
@@ -93,6 +93,7 @@ def get_syllabuses_and_tests(request, section_id=None):
         return JsonResponse({"syllabuses": syllabus_data}, status=200)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
+
 
 
 
@@ -241,6 +242,15 @@ class ScheduleViewSet(viewsets.ModelViewSet):
     filterset_fields = ['section', 'status', 'date', 'start_time', 'end_time', 'records__user__id', 'section__center']
     search_fields = ['section__name', 'section__center__name']
     ordering_fields = ['start_time', 'end_time', 'capacity', 'reserved']
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def start(self, request, pk=None):
+        try:
+            schedule = self.get_object()
+            schedule.start()  # Call the start method
+            return Response({'message': 'Meeting started successfully.', 'meeting_link': schedule.meeting_link}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     def get_queryset(self):
         if self.request.user.role == 'STAFF':

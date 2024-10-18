@@ -226,6 +226,8 @@ class Subscription(models.Model):
     def __str__(self):
         return f"{self.name} - {self.user.email} - {self.type}"
 
+import requests
+
 class Schedule(models.Model):
     section = models.ForeignKey(Section, related_name='schedules', on_delete=models.CASCADE)
     date = models.DateField()
@@ -234,6 +236,7 @@ class Schedule(models.Model):
     capacity = models.IntegerField()
     reserved = models.IntegerField(default=0)
     status = models.BooleanField(default=True)
+    meeting_link = models.URLField(blank=True, null=True)  # New field
 
     def save(self, *args, **kwargs):
         if self.reserved >= self.capacity:
@@ -241,6 +244,19 @@ class Schedule(models.Model):
         else:
             self.status = True
         super().save(*args, **kwargs)
+
+    def start(self):
+        url = "http://0.0.0.0:8050/meet/start/"
+        response = requests.post(url)
+        if response.status_code == 200:
+            data = response.json()
+            if 'whereby_link' in data:
+                self.meeting_link = data['whereby_link']
+                self.save(update_fields=['meeting_link'])
+            else:
+                raise ValueError("No meeting link returned from API.")
+        else:
+            raise ValueError(f"Failed to start meeting: {response.text}")
 
     def __str__(self):
         return f"{self.section.name} on {self.date}"
