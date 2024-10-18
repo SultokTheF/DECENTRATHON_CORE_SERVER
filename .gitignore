@@ -1,0 +1,82 @@
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Python cache files
+*.py[cod]
+__pycache__/
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.pyc
+
+# Django stuff:
+*.log
+*.pot
+*.pyc
+__pycache__/
+db.sqlite3
+db.sqlite3-journal
+media/qrcodes/*.png
+media/center_images/*.png
+media/center_images/*.jpg
+media/center_images/*.jpeg
+media/center_images/*.gif
+media/center_images/*.svg
+media/center_images/*.webp
+media/category_images/*.png
+media/category_images/*.jpg
+media/category_images/*.jpeg
+media/category_images/*.gif
+media/category_images/*.svg
+media/category_images/*.webp
+media/section_images/*.png
+media/section_images/*.jpg
+media/section_images/*.jpeg
+media/section_images/*.gif
+media/section_images/*.svg
+media/section_images/*.webp
+media/section_images/*.webp
+staticfiles/
+static/
+.env
+
+# Migrations
+**/migrations/*.py
+**/migrations/*.pyc
+user/migrations/
+api/migrations
+
+# Local settings
+local_settings.py
+.env
+
+# SQL dumps
+*.sql
+
+# Exclude __pycache__ only in user and api directories
+user/__pycache__/
+api/__pycache__/
+core/__pycache__/
+
+# Exclude other common __pycache__ and Python-related files
+*.pyc
+*.pyo
+*.pyd
+
+# Django stuff:
+*.pot
+*.pyc
+static/
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*~

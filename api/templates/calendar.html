@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Calendar</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .calendar {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .event {
+            margin-bottom: 10px;
+        }
+        .event h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+        .event p {
+            margin: 0;
+            font-size: 14px;
+            color: #555;
+        }
+    </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            fetch('/api/calendar/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.error('Error fetching events:', data.error);
+                        return;
+                    }
+
+                    const events = data.events;
+                    const eventsList = document.getElementById('events-list');
+
+                    events.forEach(event => {
+                        const eventItem = document.createElement('li');
+                        eventItem.className = 'event';
+
+                        const eventTitle = document.createElement('h3');
+                        eventTitle.textContent = event.summary;
+                        eventItem.appendChild(eventTitle);
+
+                        const eventTime = document.createElement('p');
+                        const startDateTime = new Date(event.start.dateTime).toLocaleString();
+                        const endDateTime = new Date(event.end.dateTime).toLocaleString();
+                        eventTime.textContent = `${startDateTime} - ${endDateTime}`;
+                        eventItem.appendChild(eventTime);
+
+                        eventsList.appendChild(eventItem);
+                    });
+                })
+                .catch(error => console.error('Error fetching events:', error));
+        });
+    </script>
+</head>
+<body>
+    <div class="calendar">
+        <h1>Upcoming Events</h1>
+        <ul id="events-list"></ul>
+    </div>
+</body>
+</html>
