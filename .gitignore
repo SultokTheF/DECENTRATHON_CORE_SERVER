@@ -21,7 +21,7 @@ build/
 *.pot
 *.pyc
 __pycache__/
-db.sqlite3
+# db.sqlite3
 db.sqlite3-journal
 media/syllabus_pdfs/*.pdf
 media/qrcodes/*.png
@@ -50,10 +50,10 @@ static/
 .env
 
 # Migrations
-**/migrations/*.py
-**/migrations/*.pyc
-user/migrations/
-api/migrations
+# **/migrations/*.py
+# **/migrations/*.pyc
+# user/migrations/
+# api/migrations
 
 # Local settings
 local_settings.py
